@@ -1,61 +1,93 @@
 import numpy as np
-from math import log,e
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
+from scipy.stats import linregress
+import random
 
-def random(n):
-    x0 = 1  
-    a = 16807  
-    m = (1 << 31) - 1  
-    l = []
+# Initialize x0 globally
+x0 = 1
 
-    for _ in range(n):
-        x0 = (a * x0) % m  
-        u = x0 /(1.0* m)  
-        l.append(u)
-    
-    return l
+def rand_uniform():
+    global x0
+    a = 16807
+    m = (1 << 31) - 1
+    x0 = (a * x0) % m
+    return (x0 / m)  
 
-
-def expo_random_numbers(n):
-    # lambda parameter is 1
-    lambda_parameter=1
-    l = random(n)
-    ans = [-np.log(i) / lambda_parameter  for i in l]
-    return ans
- 
-    
-n=int(input())
-res = expo_random_numbers(n)
-division = 0.5 # x first belongs to interval [0,division] then [division, 2 * division] and go on
+def distance(x, y):
+    return x * x + y * y
 
 
-max_i = max(res)
-count = [0] * int(max_i/ division + 1)
+# no of steps in each walk
+n = 10000
+
+# no of different walks
+m=5
+
+delta = 0.01 
+walks_x_coordinate = []
+walks_y_coordinate = []
+
+for i in range(m):
+    arr_x = [0]
+    arr_y = [0]
+    for j in range(n):
+        x = rand_uniform()
+        y = rand_uniform()
+        if(x>=0.5) :
+          arr_x.append(arr_x[-1] + delta)
+        else :
+          arr_x.append(arr_x[-1] - delta)
+        if(y>=0.5) :
+          arr_y.append(arr_y[-1] + delta)
+        else :
+          arr_y.append(arr_y[-1] - delta)
 
 
-for i in res:
-	i /= division
-	count[int(i)]+=1
+    walks_x_coordinate.append(arr_x)
+    walks_y_coordinate.append(arr_y)
 
-probability=[]
-for i in count:
-	probability.append(i/(1.0*n))
-
-lmbda =1 # given 
-# we can verify the first element of prob list as 1 - e ** (- lambda * division)
-
-Actual_values = 1 - e ** (-lmbda * division)
-Calculated_values = probability[0]
-
-print(f"Real value is {Actual_values} and value obtained is {Calculated_values}")
-
-error = Actual_values - Calculated_values
-error_percent = error / Actual_values * 100
-
-print("Error percent is {} %".format(error_percent))
-
-plt.plot(probability) # Now plt refers to matplotlib.pyplot
-plt.title("Exponenial distribution")
-plt.xlabel("x")
-plt.ylabel("Probabilities")
+# Plot random walks
+for i in range(m):
+    plt.plot(walks_x_coordinate[i], walks_y_coordinate[i])
+plt.title(f"Plot 1: {m} Random Walks")
+plt.xlabel("x coordinate")
+plt.ylabel("y coordinate")
 plt.show()
+
+
+                     # QUESTION 4 USING THE FIRST RANDOM TRAJECTORY FROM PREVIOUS Question
+
+# Using the first random trajectory
+X = walks_x_coordinate[0]
+Y = walks_y_coordinate[0]
+
+DeltaT = [1, 5, 10, 20, 100, 200, 400, 800, 1000, 2000, 4000, 8000]
+
+# mean square difereence array MSU[i]= (x-xmean)**2 +(y-ymean)**2
+MSU = []
+for i in DeltaT:
+    msq = []
+    for j in range(0, n - i):
+        msq.append(distance(X[j + i] - X[j], Y[j + i] - Y[j]))
+    MSU.append(sum(msq) / len(msq))
+
+DeltaT = np.array(DeltaT)
+MSU = np.array(MSU)
+
+slope, intercept, _, _, _ = linregress(np.log(DeltaT), np.log(MSU))
+print(f"Slope: {slope}, Intercept: {intercept}")
+# ln MSU = ln(4*D)+ln(t)
+# D is e^(intercept value from graph)/4
+D = np.exp(intercept)/4
+print(f"Value of D is {D} ")
+
+plt.scatter(np.log(DeltaT),np.log(MSU), label="Data")
+plt.plot(np.log(DeltaT), slope*np.log(DeltaT) + intercept, color='green', label="Linear Fit")
+plt.title("Plot 2: Msq vs Delta T")
+plt.xlabel("ln(Delta T)")
+plt.ylabel("ln(Mean_Square)")
+plt.legend()
+plt.show()
+
+
+
